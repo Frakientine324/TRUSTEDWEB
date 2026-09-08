@@ -65,3 +65,15 @@ export interface AppInput {
   imageDataUrl?: string | null;
 }
 
+export interface BuyViaContact {
+  id: string;
+  label: string;
+  url: string;
+}
+
+export interface BuyViaContactInput {
+  id?: string;
+  label: string;
+  url: string;
+}
+

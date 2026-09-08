@@ -12,6 +12,8 @@ tags:
     description: Health operations
   - name: apps
     description: Appory marketplace listings
+  - name: buy-via-contacts
+    description: Appory marketplace Buy via contact options
 paths:
   /healthz:
     get:
@@ -122,6 +124,72 @@ paths:
           description: Listing not found
         "500":
           description: Listing could not be deleted
+  /buy-via-contacts:
+    get:
+      operationId: listBuyViaContacts
+      tags: [buy-via-contacts]
+      summary: List Buy via contact options
+      description: Returns the contact options shown on app detail pages.
+      responses:
+        "200":
+          description: Buy via contact options
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/BuyViaContact"
+        "503":
+          description: Shared contact storage unavailable
+    post:
+      operationId: createBuyViaContact
+      tags: [buy-via-contacts]
+      summary: Add a Buy via contact option
+      description: Adds a contact option when the admin access header is valid.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/BuyViaContactInput"
+      responses:
+        "201":
+          description: Created contact option
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BuyViaContact"
+        "400":
+          description: Invalid contact option
+        "401":
+          description: Admin access required
+        "409":
+          description: Duplicate contact option
+        "500":
+          description: Contact option could not be saved
+  /buy-via-contacts/{id}:
+    delete:
+      operationId: deleteBuyViaContact
+      tags: [buy-via-contacts]
+      summary: Remove a Buy via contact option
+      description: Removes a contact option when the owner removal code is valid.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "204":
+          description: Deleted contact option
+        "400":
+          description: Invalid contact option
+        "401":
+          description: Owner removal code required
+        "404":
+          description: Contact option not found
+        "500":
+          description: Contact option could not be removed
 components:
   schemas:
     HealthStatus:
@@ -215,4 +283,31 @@ components:
         - version
         - initials
         - iconBg
+    BuyViaContact:
+      type: object
+      properties:
+        id:
+          type: string
+        label:
+          type: string
+        url:
+          type: string
+          format: uri
+      required:
+        - id
+        - label
+        - url
+    BuyViaContactInput:
+      type: object
+      properties:
+        id:
+          type: string
+        label:
+          type: string
+        url:
+          type: string
+          format: uri
+      required:
+        - label
+        - url
 

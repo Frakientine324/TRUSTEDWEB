@@ -46,6 +46,12 @@ type AppProduct = {
   imageDataUrl?: string;
 };
 
+type BuyViaContact = {
+  id: string;
+  label: string;
+  url: string;
+};
+
 type CartLine = { product: AppProduct; quantity: number };
 type NewAppForm = {
   name: string;
@@ -64,12 +70,19 @@ const adminAccessCode = '831615';
 const remigioMessengerUrl = 'https://m.me/gioroames';
 const whatsappContactUrl = 'https://wa.me/qr/PA4EG37IP4TQB1';
 const messengerContactUrl = 'https://m.me/joshua.bartolome.1614460';
+const defaultBuyViaContacts: BuyViaContact[] = [
+  { id: 'remigio-messenger', label: 'Remigio Somera', url: remigioMessengerUrl },
+  { id: 'whatsapp', label: 'WhatsApp', url: whatsappContactUrl },
+  { id: 'joshua-bartolome', label: 'Joshua Bartolome', url: messengerContactUrl },
+];
+const buyViaOwnerCode = '151683';
 const iconPalette = ['246 56% 43%', '18 83% 57%', '158 37% 41%', '40 69% 56%', '286 38% 52%', '334 45% 48%', '211 52% 47%'];
 const defaultSharedApiBase = import.meta.env.PROD
   ? 'https://error-fixer--kakax66479.replit.app/api'
   : '/api';
 const apporyApiBase = (import.meta.env.VITE_API_BASE_URL ?? defaultSharedApiBase).replace(/\/+$/, '');
 const localProductsStorageKey = 'appory-added-apps-v2';
+const buyViaContactsStorageKey = 'appory-buy-via-contacts-v1';
 const appCategories: AppCategory[] = ['Productivity', 'Entertainment', 'Utilities', 'Creative'];
 
 function formatPrice(value: number) {
@@ -161,6 +174,38 @@ function normalizeProducts(values: unknown[]): AppProduct[] {
   }, []);
 }
 
+function normalizeBuyViaContacts(values: unknown[]): BuyViaContact[] {
+  const seen = new Set<string>();
+  return values.reduce<BuyViaContact[]>((result, value) => {
+    if (!value || typeof value !== 'object') return result;
+    const candidate = value as Partial<BuyViaContact>;
+    const label = typeof candidate.label === 'string' ? candidate.label.trim() : '';
+    const url = typeof candidate.url === 'string' ? candidate.url.trim() : '';
+    const id = typeof candidate.id === 'string' && candidate.id.trim() ? candidate.id.trim() : makeSlug(label);
+    if (!label || !url || seen.has(id)) return result;
+    try {
+      const parsedUrl = new URL(url);
+      if (!['http:', 'https:'].includes(parsedUrl.protocol)) return result;
+    } catch {
+      return result;
+    }
+    seen.add(id);
+    result.push({ id, label, url });
+    return result;
+  }, []);
+}
+
+function readBuyViaContacts(): BuyViaContact[] {
+  try {
+    const saved = window.localStorage.getItem(buyViaContactsStorageKey);
+    if (saved === null) return defaultBuyViaContacts;
+    const parsed = JSON.parse(saved);
+    return Array.isArray(parsed) ? normalizeBuyViaContacts(parsed) : defaultBuyViaContacts;
+  } catch {
+    return defaultBuyViaContacts;
+  }
+}
+
 function readLocalProducts(): AppProduct[] {
   try {
     const saved = window.localStorage.getItem(localProductsStorageKey);
@@ -200,6 +245,27 @@ async function requestSharedApp(product: AppProduct, method: 'POST' | 'PATCH' | 
   }
 }
 
+async function requestSharedBuyViaContact(contact: BuyViaContact, method: 'POST' | 'DELETE') {
+  const controller = new AbortController();
+  const timeoutId = window.setTimeout(() => controller.abort(), 4500);
+  try {
+    const response = await fetch(`${apporyApiBase}/buy-via-contacts${method === 'POST' ? '' : `/${encodeURIComponent(contact.id)}`}`, {
+      method,
+      headers: {
+        'Content-Type': 'application/json',
+        ...(method === 'POST'
+          ? { 'x-appory-admin-pin': adminAccessCode }
+          : { 'x-appory-buy-via-owner-code': buyViaOwnerCode }),
+      },
+      body: method === 'POST' ? JSON.stringify(contact) : undefined,
+      signal: controller.signal,
+    });
+    if (!response.ok) throw new Error(`Shared Buy via contact request failed with status ${response.status}`);
+  } finally {
+    window.clearTimeout(timeoutId);
+  }
+}
+
 function AppIcon({ product, large = false }: { product: AppProduct; large?: boolean }) {
   return (
     <div
@@ -220,6 +286,13 @@ function App() {
   const [cart, setCart] = useState<CartLine[]>([]);
   const [cartOpen, setCartOpen] = useState(false);
   const [selectedProduct, setSelectedProduct] = useState<AppProduct | null>(null);
+  const [buyViaContacts, setBuyViaContacts] = useState<BuyViaContact[]>(readBuyViaContacts);
+  const [buyViaFormOpen, setBuyViaFormOpen] = useState(false);
+  const [buyViaForm, setBuyViaForm] = useState({ label: '', url: '' });
+  const [buyViaFormError, setBuyViaFormError] = useState('');
+  const [buyViaRemoveTarget, setBuyViaRemoveTarget] = useState<BuyViaContact | null>(null);
+  const [buyViaRemovePin, setBuyViaRemovePin] = useState('');
+  const [buyViaRemoveError, setBuyViaRemoveError] = useState('');
   const [confirmed, setConfirmed] = useState(false);
   const [addAppOpen, setAddAppOpen] = useState(false);
   const [manageAppsOpen, setManageAppsOpen] = useState(false);
@@ -264,6 +337,44 @@ function App() {
     }
   }, [cart]);
 
+  useEffect(() => {
+    try {
+      window.localStorage.setItem(buyViaContactsStorageKey, JSON.stringify(buyViaContacts));
+    } catch {
+      // Contact links remain usable for this session if browser storage is unavailable.
+    }
+  }, [buyViaContacts]);
+
+  useEffect(() => {
+    let active = true;
+    async function loadSharedBuyViaContacts() {
+      const controller = new AbortController();
+      const timeoutId = window.setTimeout(() => controller.abort(), 4500);
+      try {
+        const response = await fetch(`${apporyApiBase}/buy-via-contacts`, { cache: 'no-store', signal: controller.signal });
+        if (!response.ok || !response.headers.get('content-type')?.includes('application/json')) return;
+        const payload = await response.json() as unknown;
+        if (!Array.isArray(payload)) return;
+        const remoteContacts = normalizeBuyViaContacts(payload);
+        if (!active) return;
+        setBuyViaContacts(remoteContacts);
+        try {
+          window.localStorage.setItem(buyViaContactsStorageKey, JSON.stringify(remoteContacts));
+        } catch {
+          // The in-memory list remains usable when browser storage is unavailable.
+        }
+      } catch {
+        // Keep cached contact links visible while shared contact storage is offline.
+      } finally {
+        window.clearTimeout(timeoutId);
+      }
+    }
+    void loadSharedBuyViaContacts();
+    return () => {
+      active = false;
+    };
+  }, []);
+
   const isAdded = (product: AppProduct) => !catalog.some((item) => item.id === product.id);
   const postedProducts = useMemo(() => products.filter(isAdded), [products]);
   const filteredProducts = useMemo(() => {
@@ -278,7 +389,7 @@ function App() {
   const total = cart.reduce((sum, line) => sum + line.product.price * line.quantity, 0);
 
   useEffect(() => {
-    const surfaceOpen = Boolean(cartOpen || selectedProduct || confirmed || adminLockOpen || addAppOpen || manageAppsOpen);
+    const surfaceOpen = Boolean(cartOpen || selectedProduct || buyViaFormOpen || buyViaRemoveTarget || confirmed || adminLockOpen || addAppOpen || manageAppsOpen);
     if (!surfaceOpen) return undefined;
     const handleEscape = (event: KeyboardEvent) => {
       if (event.key !== 'Escape') return;
@@ -286,6 +397,10 @@ function App() {
         setConfirmed(false);
       } else if (cartOpen) {
         setCartOpen(false);
+      } else if (buyViaRemoveTarget) {
+        closeBuyViaRemoveGate();
+      } else if (buyViaFormOpen) {
+        closeBuyViaForm();
       } else if (selectedProduct) {
         setSelectedProduct(null);
       } else if (adminLockOpen || addAppOpen || manageAppsOpen) {
@@ -294,7 +409,7 @@ function App() {
     };
     window.addEventListener('keydown', handleEscape);
     return () => window.removeEventListener('keydown', handleEscape);
-  }, [addAppOpen, adminLockOpen, cartOpen, confirmed, manageAppsOpen, selectedProduct]);
+  }, [addAppOpen, adminLockOpen, buyViaFormOpen, buyViaRemoveTarget, cartOpen, confirmed, manageAppsOpen, selectedProduct]);
 
   useEffect(() => {
     let active = true;
@@ -344,14 +459,14 @@ function App() {
   }, []);
 
   useEffect(() => {
-    const surfaceOpen = Boolean(cartOpen || selectedProduct || confirmed || adminLockOpen || addAppOpen || manageAppsOpen);
+    const surfaceOpen = Boolean(cartOpen || selectedProduct || buyViaFormOpen || buyViaRemoveTarget || confirmed || adminLockOpen || addAppOpen || manageAppsOpen);
     if (!surfaceOpen) return undefined;
     const previousOverflow = document.body.style.overflow;
     document.body.style.overflow = 'hidden';
     return () => {
       document.body.style.overflow = previousOverflow;
     };
-  }, [addAppOpen, adminLockOpen, cartOpen, confirmed, manageAppsOpen, selectedProduct]);
+  }, [addAppOpen, adminLockOpen, buyViaFormOpen, buyViaRemoveTarget, cartOpen, confirmed, manageAppsOpen, selectedProduct]);
 
   function saveProducts(nextProducts: AppProduct[]) {
     try {
@@ -572,6 +687,71 @@ function App() {
     setActiveCategory('All apps');
   }
 
+  function openBuyViaForm() {
+    setBuyViaForm({ label: '', url: '' });
+    setBuyViaFormError('');
+    setBuyViaFormOpen(true);
+  }
+
+  function closeBuyViaForm() {
+    setBuyViaFormOpen(false);
+    setBuyViaFormError('');
+  }
+
+  function addBuyViaContact(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const label = buyViaForm.label.trim();
+    const url = buyViaForm.url.trim();
+    if (!label || !url) {
+      setBuyViaFormError('Add a contact name and link.');
+      return;
+    }
+    let parsedUrl: URL;
+    try {
+      parsedUrl = new URL(url);
+      if (!['http:', 'https:'].includes(parsedUrl.protocol)) throw new Error('Unsupported link');
+    } catch {
+      setBuyViaFormError('Use a valid http or https contact link.');
+      return;
+    }
+    const idBase = makeSlug(label);
+    const id = buyViaContacts.some((contact) => contact.id === idBase) ? `${idBase}-${buyViaContacts.length + 1}` : idBase;
+    const contact = { id, label, url: parsedUrl.toString() };
+    setBuyViaContacts((current) => [...current, contact]);
+    void requestSharedBuyViaContact(contact, 'POST').catch(() => {
+      setImageError('The Buy via contact was added on this device, but shared sync is unavailable.');
+    });
+    closeBuyViaForm();
+  }
+
+  function openBuyViaRemoveGate(contact: BuyViaContact) {
+    setBuyViaRemoveTarget(contact);
+    setBuyViaRemovePin('');
+    setBuyViaRemoveError('');
+  }
+
+  function closeBuyViaRemoveGate() {
+    setBuyViaRemoveTarget(null);
+    setBuyViaRemovePin('');
+    setBuyViaRemoveError('');
+  }
+
+  function removeBuyViaContact(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (buyViaRemovePin !== buyViaOwnerCode) {
+      setBuyViaRemovePin('');
+      setBuyViaRemoveError('Owner code required. Try again.');
+      return;
+    }
+    const contact = buyViaRemoveTarget;
+    if (!contact) return;
+    setBuyViaContacts((current) => current.filter((item) => item.id !== contact.id));
+    void requestSharedBuyViaContact(contact, 'DELETE').catch(() => {
+      setImageError('The Buy via contact was removed on this device, but shared sync is unavailable.');
+    });
+    closeBuyViaRemoveGate();
+  }
+
   return (
     <div className="marketplace-shell">
       <aside className="side-rail" aria-label="Main navigation">
@@ -680,7 +860,9 @@ function App() {
 
       {manageAppsOpen && <div className="modal-scrim" role="presentation" onClick={closeAdminSurface}><div className="detail-modal manage-apps-modal" role="dialog" aria-modal="true" aria-labelledby="manage-apps-title" onClick={(event) => event.stopPropagation()} data-testid="dialog-manage-apps"><button className="panel-close detail-close" onClick={closeAdminSurface} aria-label="Close manage apps" data-testid="button-close-manage-apps"><X /></button><div className="manage-apps-heading"><div className="admin-lock-icon"><Settings2 /></div><div><p className="detail-category">Seller tools / Posted apps</p><h2 className="detail-name" id="manage-apps-title">Manage your shelf</h2><p className="detail-publisher">Owner-only controls for apps posted from your seller tools.</p></div></div><div className="manage-apps-body">{postedProducts.length ? <div className="posted-app-list" data-testid="list-posted-apps">{postedProducts.map((product) => <div className="posted-app-row" key={product.id} data-testid={`row-posted-app-${product.id}`}><AppIcon product={product} /><div className="posted-app-info"><strong>{product.name}</strong><span>{product.category} / {product.publisher}</span></div><div className="posted-app-actions"><label className="admin-image-upload"><input key={product.imageDataUrl || product.id} type="file" accept="image/*" onChange={(event) => handlePostedAppImageChange(product, event)} aria-label={`Change image for ${product.name}`} data-testid={`input-change-image-${product.id}`} /><ImagePlus /><span>{product.imageDataUrl ? 'Change image' : 'Add image'}</span></label>{product.imageDataUrl && <button type="button" className="admin-image-reset" onClick={() => resetPostedAppImage(product)} data-testid={`button-reset-image-${product.id}`}><X /><span>Use initials</span></button>}<button className="admin-delete-card" onClick={() => deleteAdminApp(product)} aria-label={`Remove ${product.name}`} data-testid={`button-manage-delete-${product.id}`}><Trash2 /><span>Remove</span></button></div></div>)}</div> : <div className="manage-empty"><div className="empty-symbol"><Terminal /></div><h3>No posted apps yet.</h3><p>Add an app first, then come back here when you need to remove it.</p><button className="detail-add" onClick={() => { setManageAppsOpen(false); setAddAppOpen(true); }} data-testid="button-manage-add-app"><FilePlus2 /> Add new app</button></div>}{imageError && <p className="image-upload-error manage-image-error" role="alert">{imageError}</p>}{generatedRemoveCommand && <div className="command-card remove-command-card" data-testid="card-generated-remove-command"><div className="command-card-head"><div><p className="detail-category">GitHub / Terminal</p><strong>Removal command</strong></div><button type="button" className="copy-command" onClick={() => copyCommand(generatedRemoveCommand)} data-testid="button-copy-remove-app-command"><Copy /> {copyLabel}</button></div><code>{generatedRemoveCommand}</code><p>Keep this command if you also want to remove the listing from the source catalog, not just this browser preview.</p></div>}</div></div></div>}
 
-      {selectedProduct && <div className="modal-scrim" role="presentation" onClick={() => setSelectedProduct(null)}><div className="detail-modal" role="dialog" aria-modal="true" aria-labelledby="detail-name" onClick={(event) => event.stopPropagation()} data-testid={`dialog-product-${selectedProduct.id}`}><button className="panel-close detail-close" onClick={() => setSelectedProduct(null)} aria-label="Close app details" data-testid="button-close-product"><X /></button><div className="detail-top"><AppIcon product={selectedProduct} large /><div><p className="detail-category">{selectedProduct.category} / Authorized app</p><h2 className="detail-name" id="detail-name">{selectedProduct.name}</h2><p className="detail-publisher">Published by {selectedProduct.publisher}</p></div></div><div className="detail-body"><p className="detail-description">{selectedProduct.detail}</p><div className="detail-facts"><div className="detail-fact"><span>Version</span><strong>{selectedProduct.version}</strong></div><div className="detail-fact"><span>Download</span><strong>{selectedProduct.size}</strong></div><div className="detail-fact"><span>License</span><strong>Authorized</strong></div></div><div className="detail-bottom"><span className="detail-price">{formatPrice(selectedProduct.price)}</span><div className="detail-actions"><button className="detail-add" onClick={() => addToCart(selectedProduct)} data-testid={`button-add-to-cart-${selectedProduct.id}`}>Add to basket <ShoppingBag /></button><a className="detail-messenger" href={remigioMessengerUrl} target="_blank" rel="noreferrer" data-testid={`link-buy-via-remigio-messenger-${selectedProduct.id}`}>Buy via Remigio Somera <MessageCircle /></a><a className="detail-messenger" href={whatsappContactUrl} target="_blank" rel="noreferrer" data-testid={`link-buy-via-whatsapp-${selectedProduct.id}`}>Buy via WhatsApp <MessageCircle /></a><a className="detail-messenger" href={messengerContactUrl} target="_blank" rel="noreferrer" data-testid={`link-buy-via-joshua-${selectedProduct.id}`}>Buy via Joshua Bartolome <MessageCircle /></a></div></div></div></div></div>}
+      {selectedProduct && <div className="modal-scrim" role="presentation" onClick={() => setSelectedProduct(null)}><div className="detail-modal" role="dialog" aria-modal="true" aria-labelledby="detail-name" onClick={(event) => event.stopPropagation()} data-testid={`dialog-product-${selectedProduct.id}`}><button className="panel-close detail-close" onClick={() => setSelectedProduct(null)} aria-label="Close app details" data-testid="button-close-product"><X /></button><div className="detail-top"><AppIcon product={selectedProduct} large /><div><p className="detail-category">{selectedProduct.category} / Authorized app</p><h2 className="detail-name" id="detail-name">{selectedProduct.name}</h2><p className="detail-publisher">Published by {selectedProduct.publisher}</p></div></div><div className="detail-body"><p className="detail-description">{selectedProduct.detail}</p><div className="detail-facts"><div className="detail-fact"><span>Version</span><strong>{selectedProduct.version}</strong></div><div className="detail-fact"><span>Download</span><strong>{selectedProduct.size}</strong></div><div className="detail-fact"><span>License</span><strong>Authorized</strong></div></div><div className="detail-bottom"><span className="detail-price">{formatPrice(selectedProduct.price)}</span><div className="detail-actions"><button className="detail-add" onClick={() => addToCart(selectedProduct)} data-testid={`button-add-to-cart-${selectedProduct.id}`}>Add to basket <ShoppingBag /></button>{buyViaContacts.map((contact) => <div className="buy-via-contact-row" key={contact.id}><a className="detail-messenger" href={contact.url} target="_blank" rel="noreferrer" data-testid={`link-buy-via-${contact.id}-${selectedProduct.id}`}>Buy via {contact.label} <MessageCircle /></a><button className="buy-via-remove" type="button" onClick={() => openBuyViaRemoveGate(contact)} aria-label={`Remove Buy via ${contact.label}`} title="Owner code required to remove"><span className="locked-trash-icon"><Trash2 /><Lock /></span></button></div>)}<button className="buy-via-add-box" type="button" onClick={openBuyViaForm} data-testid={`button-add-buy-via-${selectedProduct.id}`}><span className="buy-via-add-copy"><Plus /><span><strong>Add Buy via contact</strong><small>₱50 fee for an additional contact</small></span></span><span className="buy-via-fee">₱50</span></button>{buyViaFormOpen && <form className="buy-via-form" onSubmit={addBuyViaContact}><div className="buy-via-form-heading"><div><p className="detail-category">Additional contact</p><strong>Add a Buy via option</strong></div><span>₱50</span></div><label>Contact name<input value={buyViaForm.label} onChange={(event) => setBuyViaForm((current) => ({ ...current, label: event.target.value }))} placeholder="e.g. Your name" autoFocus /></label><label>Contact link<input type="url" value={buyViaForm.url} onChange={(event) => setBuyViaForm((current) => ({ ...current, url: event.target.value }))} placeholder="https://..." /></label>{buyViaFormError && <p className="buy-via-form-error" role="alert">{buyViaFormError}</p>}<div className="buy-via-form-actions"><button className="buy-via-cancel" type="button" onClick={closeBuyViaForm}>Cancel</button><button className="detail-add" type="submit">Add for ₱50 <Plus /></button></div></form>}</div></div></div></div></div>}
+
+      {buyViaRemoveTarget && <div className="modal-scrim" role="presentation" onClick={closeBuyViaRemoveGate}><form className="detail-modal buy-via-owner-modal" role="dialog" aria-modal="true" aria-labelledby="buy-via-owner-title" onClick={(event) => event.stopPropagation()} onSubmit={removeBuyViaContact}><button className="panel-close detail-close" type="button" onClick={closeBuyViaRemoveGate} aria-label="Close owner code prompt"><X /></button><div className="buy-via-lock-mark"><Trash2 /><Lock /></div><p className="detail-category">Owner only / Locked removal</p><h2 id="buy-via-owner-title">Remove Buy via {buyViaRemoveTarget.label}?</h2><p className="buy-via-owner-copy">Enter the 6-digit owner code to remove this contact option.</p><label className="buy-via-code-label">Owner code<input type="password" inputMode="numeric" autoComplete="off" maxLength={6} pattern="[0-9]{6}" value={buyViaRemovePin} onChange={(event) => setBuyViaRemovePin(event.target.value.replace(/\D/g, '').slice(0, 6))} placeholder="••••••" autoFocus /></label>{buyViaRemoveError && <p className="buy-via-form-error" role="alert">{buyViaRemoveError}</p>}<button className="detail-add owner-remove-button" type="submit"><Trash2 /> Remove Buy via</button></form></div>}
 
       {confirmed && <div className="modal-scrim" role="presentation"><div className="detail-modal confirmation" role="dialog" aria-modal="true" aria-labelledby="confirmation-title" data-testid="dialog-checkout-confirmation"><div className="confirmation-mark"><Check /></div><h2 id="confirmation-title">Your shelf just got better.</h2><p>Your authorized app licenses are ready to be collected. This local preview stops here, but the checkout path is ready for a real handoff.</p><span className="confirmation-id" data-testid="text-confirmation-id">APPORY / READY-24</span><br /><button className="confirmation-button" onClick={() => setConfirmed(false)} data-testid="button-close-confirmation">Back to the shelf</button></div></div>}
     </div>

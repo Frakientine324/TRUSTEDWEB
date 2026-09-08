@@ -128,3 +128,43 @@ export const DeleteAppParams = zod.object({
 export const DeleteAppResponse = zod.void()
 
 
+/**
+ * Returns the contact options shown on app detail pages.
+ * @summary List Buy via contact options
+ */
+export const ListBuyViaContactsResponseItem = zod.object({
+  "id": zod.string(),
+  "label": zod.string(),
+  "url": zod.string().url()
+})
+export const ListBuyViaContactsResponse = zod.array(ListBuyViaContactsResponseItem)
+
+
+/**
+ * Adds a contact option when the admin access header is valid.
+ * @summary Add a Buy via contact option
+ */
+export const CreateBuyViaContactBody = zod.object({
+  "id": zod.string().optional(),
+  "label": zod.string(),
+  "url": zod.string().url()
+})
+
+export const CreateBuyViaContactResponse = zod.object({
+  "id": zod.string(),
+  "label": zod.string(),
+  "url": zod.string().url()
+})
+
+
+/**
+ * Removes a contact option when the owner removal code is valid.
+ * @summary Remove a Buy via contact option
+ */
+export const DeleteBuyViaContactParams = zod.object({
+  "id": zod.coerce.string()
+})
+
+export const DeleteBuyViaContactResponse = zod.void()
+
+

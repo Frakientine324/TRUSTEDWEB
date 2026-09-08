@@ -10,4 +10,6 @@ export * from './app';
 export * from './appCategory';
 export * from './appInput';
 export * from './appInputCategory';
+export * from './buyViaContact';
+export * from './buyViaContactInput';
 export * from './healthStatus';

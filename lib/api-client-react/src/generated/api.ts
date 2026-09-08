@@ -22,6 +22,8 @@ import type {
 import type {
   App,
   AppInput,
+  BuyViaContact,
+  BuyViaContactInput,
   HealthStatus
 } from './api.schemas';
 
@@ -423,5 +425,227 @@ export const useDeleteApp = <TError = ErrorType<void>,
         TContext
       > => {
       return useMutation(getDeleteAppMutationOptions(options));
+    }
+
+export const getListBuyViaContactsUrl = () => {
+
+
+
+
+  return `/api/buy-via-contacts`
+}
+
+/**
+ * Returns the contact options shown on app detail pages.
+ * @summary List Buy via contact options
+ */
+export const listBuyViaContacts = async ( options?: Parameters<typeof customFetch>[1]): Promise<BuyViaContact[]> => {
+
+  return customFetch<BuyViaContact[]>(getListBuyViaContactsUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListBuyViaContactsQueryKey = () => {
+    return [
+    `/api/buy-via-contacts`
+    ] as const;
+    }
+
+
+export const getListBuyViaContactsQueryOptions = <TData = Awaited<ReturnType<typeof listBuyViaContacts>>, TError = ErrorType<void>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listBuyViaContacts>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListBuyViaContactsQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listBuyViaContacts>>> = ({ signal }) => listBuyViaContacts({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listBuyViaContacts>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ListBuyViaContactsQueryResult = NonNullable<Awaited<ReturnType<typeof listBuyViaContacts>>>
+export type ListBuyViaContactsQueryError = ErrorType<void>
+
+
+/**
+ * @summary List Buy via contact options
+ */
+
+export function useListBuyViaContacts<TData = Awaited<ReturnType<typeof listBuyViaContacts>>, TError = ErrorType<void>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listBuyViaContacts>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListBuyViaContactsQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getCreateBuyViaContactUrl = () => {
+
+
+
+
+  return `/api/buy-via-contacts`
+}
+
+/**
+ * Adds a contact option when the admin access header is valid.
+ * @summary Add a Buy via contact option
+ */
+export const createBuyViaContact = async (buyViaContactInput: BuyViaContactInput, options?: Parameters<typeof customFetch>[1]): Promise<BuyViaContact> => {
+
+  return customFetch<BuyViaContact>(getCreateBuyViaContactUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(buyViaContactInput)
+  }
+);}
+
+
+
+
+
+export const getCreateBuyViaContactMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createBuyViaContact>>, TError,{data: BodyType<BuyViaContactInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof createBuyViaContact>>, TError,{data: BodyType<BuyViaContactInput>}, TContext> => {
+
+const mutationKey = ['createBuyViaContact'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof createBuyViaContact>>, {data: BodyType<BuyViaContactInput>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  createBuyViaContact(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type CreateBuyViaContactMutationResult = NonNullable<Awaited<ReturnType<typeof createBuyViaContact>>>
+    export type CreateBuyViaContactMutationBody = BodyType<BuyViaContactInput>
+    export type CreateBuyViaContactMutationError = ErrorType<void>
+
+    /**
+ * @summary Add a Buy via contact option
+ */
+export const useCreateBuyViaContact = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createBuyViaContact>>, TError,{data: BodyType<BuyViaContactInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof createBuyViaContact>>,
+        TError,
+        {data: BodyType<BuyViaContactInput>},
+        TContext
+      > => {
+      return useMutation(getCreateBuyViaContactMutationOptions(options));
+    }
+
+export const getDeleteBuyViaContactUrl = (id: string,) => {
+
+
+
+
+  return `/api/buy-via-contacts/${id}`
+}
+
+/**
+ * Removes a contact option when the owner removal code is valid.
+ * @summary Remove a Buy via contact option
+ */
+export const deleteBuyViaContact = async (id: string, options?: Parameters<typeof customFetch>[1]): Promise<void> => {
+
+  return customFetch<void>(getDeleteBuyViaContactUrl(id),
+  {
+    ...options,
+    method: 'DELETE'
+
+
+  }
+);}
+
+
+
+
+
+export const getDeleteBuyViaContactMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteBuyViaContact>>, TError,{id: string}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof deleteBuyViaContact>>, TError,{id: string}, TContext> => {
+
+const mutationKey = ['deleteBuyViaContact'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof deleteBuyViaContact>>, {id: string}> = (props) => {
+          const {id} = props ?? {};
+
+          return  deleteBuyViaContact(id,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type DeleteBuyViaContactMutationResult = NonNullable<Awaited<ReturnType<typeof deleteBuyViaContact>>>
+
+    export type DeleteBuyViaContactMutationError = ErrorType<void>
+
+    /**
+ * @summary Remove a Buy via contact option
+ */
+export const useDeleteBuyViaContact = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteBuyViaContact>>, TError,{id: string}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof deleteBuyViaContact>>,
+        TError,
+        {id: string},
+        TContext
+      > => {
+      return useMutation(getDeleteBuyViaContactMutationOptions(options));
     }
 

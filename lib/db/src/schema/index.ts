@@ -18,3 +18,4 @@
 //   export type Post = typeof postsTable.$inferSelect;
 
 export * from "./appory-apps";
+export * from "./appory-buy-via-contacts";
