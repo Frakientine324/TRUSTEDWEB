@@ -1,0 +1,12 @@
+{
+  "framework": null,
+  "installCommand": "pnpm install --frozen-lockfile",
+  "buildCommand": "pnpm --filter @workspace/whatsapp-error-fixer run build",
+  "outputDirectory": "artifacts/whatsapp-error-fixer/dist/public",
+  "rewrites": [
+    {
+      "source": "/(.*)",
+      "destination": "/index.html"
+    }
+  ]
+}

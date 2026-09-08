@@ -10,6 +10,8 @@ servers:
 tags:
   - name: health
     description: Health operations
+  - name: apps
+    description: Appory marketplace listings
 paths:
   /healthz:
     get:
@@ -24,6 +26,102 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/HealthStatus"
+  /apps:
+    get:
+      operationId: listApps
+      tags: [apps]
+      summary: List app listings
+      description: Returns marketplace listings shared across the app.
+      responses:
+        "200":
+          description: App listings
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/App"
+        "503":
+          description: Shared storage unavailable
+    post:
+      operationId: createApp
+      tags: [apps]
+      summary: Create an app listing
+      description: Creates a listing when the admin access header is valid.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AppInput"
+      responses:
+        "201":
+          description: Created listing
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/App"
+        "400":
+          description: Invalid listing
+        "401":
+          description: Admin access required
+        "409":
+          description: Duplicate listing
+        "500":
+          description: Listing could not be saved
+  /apps/{id}:
+    patch:
+      operationId: updateApp
+      tags: [apps]
+      summary: Update an app listing
+      description: Updates a listing when the admin access header is valid.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AppInput"
+      responses:
+        "200":
+          description: Updated listing
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/App"
+        "400":
+          description: Invalid listing
+        "401":
+          description: Admin access required
+        "404":
+          description: Listing not found
+        "500":
+          description: Listing could not be updated
+    delete:
+      operationId: deleteApp
+      tags: [apps]
+      summary: Delete an app listing
+      description: Deletes a listing when the admin access header is valid.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "204":
+          description: Deleted listing
+        "401":
+          description: Admin access required
+        "404":
+          description: Listing not found
+        "500":
+          description: Listing could not be deleted
 components:
   schemas:
     HealthStatus:
@@ -33,4 +131,88 @@ components:
           type: string
       required:
         - status
+    App:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        publisher:
+          type: string
+        category:
+          type: string
+          enum: [Productivity, Entertainment, Utilities, Creative]
+        description:
+          type: string
+        detail:
+          type: string
+        price:
+          type: number
+        size:
+          type: string
+        version:
+          type: string
+        initials:
+          type: string
+        iconBg:
+          type: string
+        iconFg:
+          type: ["string", "null"]
+        imageDataUrl:
+          type: ["string", "null"]
+      required:
+        - id
+        - name
+        - publisher
+        - category
+        - description
+        - detail
+        - price
+        - size
+        - version
+        - initials
+        - iconBg
+    AppInput:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        publisher:
+          type: string
+        category:
+          type: string
+          enum: [Productivity, Entertainment, Utilities, Creative]
+        description:
+          type: string
+        detail:
+          type: string
+        price:
+          type: number
+        size:
+          type: string
+        version:
+          type: string
+        initials:
+          type: string
+        iconBg:
+          type: string
+        iconFg:
+          type: ["string", "null"]
+        imageDataUrl:
+          type: ["string", "null"]
+      required:
+        - id
+        - name
+        - publisher
+        - category
+        - description
+        - detail
+        - price
+        - size
+        - version
+        - initials
+        - iconBg
 

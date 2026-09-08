@@ -1,0 +1,28 @@
+kind = "web"
+previewPath = "/"
+title = "WhatsApp Error Fixer"
+description = "A helpful web app that diagnoses common WhatsApp errors and guides people through practical fixes."
+version = "1.0.0"
+id = "artifacts/whatsapp-error-fixer"
+router = "path"
+
+[[services]]
+name = "web"
+paths = [ "/" ]
+localPort = 22390
+
+[services.development]
+run = "pnpm --filter @workspace/whatsapp-error-fixer run dev"
+
+[services.production]
+build = [ "pnpm", "--filter", "@workspace/whatsapp-error-fixer", "run", "build" ]
+serve = "static"
+publicDir = "artifacts/whatsapp-error-fixer/dist/public"
+
+[[services.production.rewrites]]
+from = "/*"
+to = "/index.html"
+
+[services.env]
+PORT = "22390"
+BASE_PATH = "/"
