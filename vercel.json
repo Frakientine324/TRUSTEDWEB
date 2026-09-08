@@ -5,6 +5,10 @@
   "outputDirectory": "artifacts/whatsapp-error-fixer/dist/public",
   "rewrites": [
     {
+      "source": "/api/:path*",
+      "destination": "https://whats-app-error-fixer--mixipog779.replit.app/api/:path*"
+    },
+    {
       "source": "/(.*)",
       "destination": "/index.html"
     }
