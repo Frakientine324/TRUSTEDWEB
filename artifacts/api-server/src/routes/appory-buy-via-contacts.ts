@@ -16,8 +16,12 @@ function hasAdminAccess(request: Request) {
   return request.header("x-appory-admin-pin") === adminAccessCode;
 }
 
-function hasOwnerRemovalAccess(request: Request) {
+function hasOwnerAccess(request: Request) {
   return request.header("x-appory-buy-via-owner-code") === ownerRemovalCode;
+}
+
+function hasOwnerRemovalAccess(request: Request) {
+  return hasOwnerAccess(request);
 }
 
 function toContact(row: ApporyBuyViaContactRow) {
@@ -70,8 +74,8 @@ router.get("/buy-via-contacts", async (_request, response): Promise<void> => {
 });
 
 router.post("/buy-via-contacts", async (request, response): Promise<void> => {
-  if (!hasAdminAccess(request)) {
-    response.status(401).json({ message: "Admin access required." });
+  if (!hasOwnerAccess(request)) {
+    response.status(401).json({ message: "Owner code required." });
     return;
   }
   const contact = readContact(request.body);

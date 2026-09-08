@@ -311,7 +311,7 @@ input[type='search']::-webkit-search-cancel-button { display: none; }
 .buy-via-add-copy span { display: grid; gap: 3px; }
 .buy-via-add-copy strong { color: hsl(var(--foreground)); font-size: 11px; }
 .buy-via-add-copy small { color: hsl(var(--muted-foreground)); font-size: 9px; font-weight: 600; }
-.buy-via-fee { color: hsl(var(--accent)); font-size: 12px; font-weight: 900; }
+.buy-via-add-lock { width: 15px; color: hsl(var(--accent)); }
 .buy-via-form { display: grid; gap: 11px; width: 100%; border: 1px solid hsl(var(--border)); border-radius: 12px; background: hsl(var(--muted) / .28); padding: 14px; }
 .buy-via-form-heading { display: flex; align-items: start; justify-content: space-between; gap: 10px; }
 .buy-via-form-heading strong { font-size: 13px; }
