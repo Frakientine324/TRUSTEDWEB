@@ -391,6 +391,11 @@ input[type='search']::-webkit-search-cancel-button { display: none; }
 .admin-lock-form .form-field input { text-align: center; letter-spacing: .22em; }
 .admin-unlock-button { width: 100%; }
 .admin-lock-error { margin: -2px 0 0; text-align: center; }
+.posting-fee-note { display: flex; align-items: center; gap: 9px; border: 1px solid hsl(var(--accent) / .3); border-radius: 10px; background: hsl(var(--accent) / .07); padding: 11px 12px; color: hsl(var(--accent)); text-align: left; }
+.posting-fee-note > svg { width: 17px; flex: 0 0 auto; }
+.posting-fee-note span { display: grid; gap: 3px; }
+.posting-fee-note strong { color: hsl(var(--foreground)); font-size: 11px; }
+.posting-fee-note small { color: hsl(var(--muted-foreground)); font-size: 9px; line-height: 1.35; }
 .confirmation { text-align: center; padding: 54px 31px 51px; }
 .confirmation-mark { display: grid; width: 60px; height: 60px; margin: 0 auto 19px; place-items: center; border-radius: 20px; background: hsl(158 37% 41% / .14); color: hsl(158 37% 34%); }
 .confirmation-mark svg { width: 25px; }
