@@ -24,18 +24,26 @@ function toContact(row: ApporyBuyViaContactRow) {
   return { id: row.id, label: row.label, url: row.url };
 }
 
+function inferContactLabel(url: string) {
+  const normalizedUrl = url.toLowerCase();
+  if (normalizedUrl.includes("wa.me") || normalizedUrl.includes("whatsapp")) return "WhatsApp";
+  if (normalizedUrl.includes("m.me") || normalizedUrl.includes("messenger") || normalizedUrl.includes("facebook.com")) return "Messenger";
+  return "Custom contact";
+}
+
 function readContact(body: unknown) {
   if (!body || typeof body !== "object") return null;
   const value = body as Record<string, unknown>;
-  const label = typeof value.label === "string" ? value.label.trim() : "";
+  const requestedLabel = typeof value.label === "string" ? value.label.trim() : "";
   const url = typeof value.url === "string" ? value.url.trim() : "";
-  if (!label || !url || label.length > 80 || url.length > 500) return null;
+  if (!url || requestedLabel.length > 80 || url.length > 500) return null;
   try {
     const parsedUrl = new URL(url);
     if (!["http:", "https:"].includes(parsedUrl.protocol)) return null;
   } catch {
     return null;
   }
+  const label = requestedLabel || inferContactLabel(url);
   const id = typeof value.id === "string" && value.id.trim() ? value.id.trim() : label.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
   if (!id || id === seedMarkerId) return null;
   return { id, label, url };
