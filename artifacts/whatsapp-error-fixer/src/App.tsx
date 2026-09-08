@@ -77,9 +77,7 @@ const defaultBuyViaContacts: BuyViaContact[] = [
 ];
 const buyViaOwnerCode = '151683';
 const iconPalette = ['246 56% 43%', '18 83% 57%', '158 37% 41%', '40 69% 56%', '286 38% 52%', '334 45% 48%', '211 52% 47%'];
-const defaultSharedApiBase = import.meta.env.PROD
-  ? 'https://error-fixer--kakax66479.replit.app/api'
-  : '/api';
+const defaultSharedApiBase = '/api';
 const apporyApiBase = (import.meta.env.VITE_API_BASE_URL ?? defaultSharedApiBase).replace(/\/+$/, '');
 const localProductsStorageKey = 'appory-added-apps-v2';
 const buyViaContactsStorageKey = 'appory-buy-via-contacts-v1';
